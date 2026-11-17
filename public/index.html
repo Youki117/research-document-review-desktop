@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>研发文档审查 · 下沙</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body>
+  <header class="app-header"><div class="identity"><img src="/icon.png" width="32" height="32" alt=""><h1>研发文档审查 <span>下沙</span></h1></div><p id="connection" role="status">正在连接本地服务…</p></header>
+  <nav class="compact-nav" aria-label="工作区域"><button data-pane="import">提交文件</button><button data-pane="viewer" aria-current="page">文档预览</button><button data-pane="queue">任务队列</button></nav>
+  <main class="workbench" data-pane="viewer">
+    <aside class="import-panel" aria-labelledby="import-title">
+      <div class="panel-heading"><h2 id="import-title">提交文件</h2><span id="pending-count">0 份</span></div>
+      <div id="drop-zone" class="drop-zone"><div class="picker-actions"><button id="pick-files" type="button">添加文件</button><button id="pick-folder" type="button">添加文件夹</button></div><small id="file-limits">DOCX / PDF <button type="button" class="help-button" data-help="支持文本型 PDF，每份不超过 50 MiB，每批最多 200 份。可拖入文件，文件夹包含子目录。" aria-label="文件要求">?</button></small></div>
+      <input id="files" type="file" accept=".docx,.pdf" multiple hidden><input id="folder" type="file" webkitdirectory multiple hidden>
+      <label class="sr-only" for="batch-name">批次名称</label><input id="batch-name" type="text" maxlength="120" placeholder="批次名称（选填）">
+      <div class="list-toolbar"><span>待提交清单</span><button id="clear-pending" class="text-button" type="button" disabled>清空</button></div>
+      <p id="pending-empty" class="muted">尚未选择文件</p><ul id="pending-list" class="pending-list"></ul>
+      <details id="skipped" hidden><summary id="skipped-summary"></summary><ul id="skipped-list"></ul></details>
+      <p id="import-message" class="message" role="status" aria-live="polite" hidden></p>
+      <div class="submit-area"><button id="submit" class="primary" type="button" disabled>加入审查队列</button></div>
+    </aside>
+    <section class="viewer-panel" aria-labelledby="document-title">
+      <div class="viewer-heading"><h2 id="document-title">选择文档</h2><button id="document-info" class="help-button" type="button" aria-label="文档详情" data-help="从右侧选择文件查看正文。">i</button></div>
+      <div id="approval-panel" class="document-toolbar" hidden>
+        <span id="review-state" role="status" aria-live="polite"></span>
+        <div class="toolbar-actions"><button id="next-review" type="button">开始逐项确认</button><button id="approve-review" class="primary" type="button">导出修正文档</button><details id="document-more"><summary aria-label="更多操作">更多</summary><div class="floating-menu"><div id="downloads" class="downloads"></div><button id="open-report" class="text-button" type="button">查看审查报告</button><button id="reload-review" class="text-button" type="button">重新载入记录</button><div id="review-fields"><label for="reviewer">处理人（选填）</label><input id="reviewer" maxlength="80" autocomplete="off"><label for="review-note">备注（选填）</label><textarea id="review-note" maxlength="2000" rows="2"></textarea></div></div></details></div>
+      </div>
+      <p id="review-message" class="message" role="status" hidden></p>
+      <div id="viewer-state" class="viewer-state" role="status"><p>添加文件，或从右侧选择文档。</p></div>
+      <div id="document-view" hidden><article id="document-body" class="document-body" aria-label="标注正文"></article></div>
+    </section>
+    <aside class="queue-panel" aria-labelledby="queue-title">
+      <div class="panel-heading"><h2 id="queue-title">文件列表</h2><button id="refresh" class="text-button" type="button">刷新</button></div>
+      <p id="queue-counts" class="queue-counts">共 0 份</p>
+      <label class="sr-only" for="search">搜索文件或批次</label><input id="search" type="search" placeholder="搜索文件或批次">
+      <label class="sr-only" for="filter">筛选任务状态</label><select id="filter"><option value="all">全部任务</option><option value="active">排队及审查中</option><option value="completed">审查已完成</option><option value="problem">失败及已中断</option></select>
+      <p id="queue-message" class="muted" role="status">正在读取任务…</p><div id="job-list" class="job-list"></div>
+    </aside>
+  </main>
+  <div id="hover-info" class="hover-info" role="tooltip" hidden></div>
+  <section id="edit-popover" class="edit-popover" role="dialog" aria-label="修改当前建议" hidden><div class="edit-popover-heading"><span id="edit-position"></span><button id="close-edit" type="button" aria-label="关闭修改框">关闭</button></div><div class="edit-popover-fields"><textarea id="replacement" rows="2" maxlength="8000" aria-label="修改后的文本"></textarea><button id="confirm-edit" class="confirm-edit" type="button" aria-label="确认并转到下一处"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg></button></div><p id="edit-reason"></p></section>
+  <div id="update-banner" class="update-banner" hidden><span id="update-text"></span><button id="download-update" type="button">下载新版</button><button id="dismiss-update" class="text-button" type="button">稍后</button></div>
+  <dialog id="report-dialog"><div class="panel-heading"><h2>审查报告</h2><button id="close-report" type="button">关闭</button></div><pre id="report-text"></pre></dialog>
+</body></html>

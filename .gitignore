@@ -1,0 +1,14 @@
+模型配置.json
+**/data/
+run/
+acceptance/
+test*
+.env*
+build/
+dist/
+stage/
+__pycache__/
+*.pyc
+*.spec
+.venv/
+.taste-skill/
