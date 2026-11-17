@@ -11,6 +11,7 @@ import {TOOLS,FILE_BYTES,TOTAL_BYTES,UUID,validateForm,commandArgs,outputDir,col
 import {modelEnvironment} from './model-config.mjs';
 import {documentPreview} from './preview.mjs';
 import {getApproval, updateApproval, approvalFile} from './approval.mjs';
+import {recordModification} from './modification-log.mjs';
 
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const PUBLIC=fileURLToPath(new URL('./public/',import.meta.url));
@@ -33,6 +34,20 @@ async function saveJob(dir,job){
  const path=join(dir,job.id,'job.json');
  await writeFile(path+'.tmp',JSON.stringify(job,null,2),'utf8');
  await rename(path+'.tmp',path);
+ let suggestions;
+ if(job.status==='completed'){
+  try{const report=await readJson(join(dir,job.id,'output','report.json'));suggestions=report.files?.map(file=>({
+   written_issues:file.written_issues, unmatched:file.unmatched, validation_rejected:file.validation_rejected,
+   filtered:file.filtered
+  }));}catch{suggestions=null;}
+ }
+ let failure=job.error;
+ if(job.kind==='xiasha'&&job.status==='failed'){
+  try{failure=await knownReviewFailure(join(dir,job.id))||failure;}catch{ /* Keep the saved failure if diagnostics cannot be read. */ }
+ }
+ job.log_warning=await recordModification(dir,job,'task_status',{status:job.status,result_status:job.result_status,
+  error:failure,
+  ...(job.status==='completed'?{ai_suggestions:suggestions}: {})});
 }
 
 async function readForm(req){

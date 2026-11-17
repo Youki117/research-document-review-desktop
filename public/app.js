@@ -115,8 +115,9 @@ function renderJobs() {
     const matches = `${job.batch_name || ''} ${job.source_path || ''} ${job.document_names?.join(' ') || ''}`.toLocaleLowerCase().includes(search);
     return matches && (filter === 'all' || filter === 'active' && ['queued', 'running'].includes(job.status) || filter === 'completed' && job.status === 'completed' || filter === 'problem' && ['failed', 'interrupted'].includes(job.status));
   });
-  $('#queue-message').hidden = visible.length > 0;
-  $('#queue-message').textContent = jobs.length ? '没有符合条件的任务' : '还没有任务，添加文件后开始审查。';
+  const logWarning=jobs.find(job=>job.log_warning)?.log_warning;
+  $('#queue-message').hidden = visible.length > 0 && !logWarning;
+  $('#queue-message').textContent = logWarning || (jobs.length ? '没有符合条件的任务' : '还没有任务，添加文件后开始审查。');
   const target = $('#job-list'), scrollTop = target.scrollTop;
   const version = JSON.stringify([selected, visible.map(job => [job.id, job.status, job.result_status, job.approval_status, job.error])]);
   if (version !== target.dataset.version) {
@@ -283,7 +284,7 @@ async function saveReview(action) {
     else review.revision=result.revision;
     const job = jobs.find(item => item.id === id); if (job) { job.approval_status = review.status; job.approval_revision = review.revision; }
     renderJobs();reviewControls();
-    reviewMessage('');
+    reviewMessage(result.log_warning || '',Boolean(result.log_warning));
     return true;
   } catch (error) { reviewMessage(`保存失败：${error.message}`, true);return false; }
   finally { reviewSaving = false;exclusiveWrite=false;reviewControls();savingPromise=null; }
@@ -299,9 +300,14 @@ function positionEditor() {
   const anchor=editAnchor(currentEditId);if(!anchor){$('#edit-popover').hidden=true;return;}
   const rect=anchor.getClientRects()[0]||anchor.getBoundingClientRect(),panel=$('.viewer-panel').getBoundingClientRect(),box=$('#edit-popover');
   if(rect.bottom<panel.top+100||rect.top>panel.bottom){box.hidden=true;return;}
-  const left=Math.max(8,Math.min(rect.left,innerWidth-box.offsetWidth-12));
-  const below=rect.bottom+10,above=rect.top-box.offsetHeight-10;
-  box.style.left=`${left}px`;box.style.top=`${Math.max(8,Math.min(below+box.offsetHeight<innerHeight?below:above,innerHeight-box.offsetHeight-8))}px`;
+  const right=Math.min(panel.right-16,innerWidth-12),side=right-box.offsetWidth>=rect.right+12;
+  const left=Math.max(8,side?right-box.offsetWidth:Math.min(rect.left,right-box.offsetWidth));
+  const below=rect.bottom+6,above=rect.top-box.offsetHeight-6;
+  box.style.left=`${left}px`;box.style.top=`${Math.max(panel.top+100,Math.min(side?rect.top-4:below+box.offsetHeight<panel.bottom?below:above,panel.bottom-box.offsetHeight-8))}px`;
+}
+function sizeEditor() {
+  const input=$('#replacement');input.style.height='36px';input.style.height=`${Math.min(112,input.scrollHeight+2)}px`;
+  positionEditor();
 }
 async function openReview(id) {
   if(!review?.supported||exclusiveWrite)return;
@@ -311,13 +317,11 @@ async function openReview(id) {
   const anchor=editAnchor(id);if(!anchor)return;
   anchor.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
   $('#replacement').value=item.decision==='reject'?item.original:item.replacement;
-  $('#edit-position').textContent=`${review.items.indexOf(item)+1} / ${review.items.length}`;
-  $('#edit-position').dataset.help=item.reason;
-  $('#edit-reason').textContent=item.reason;
+  $('#replacement').title=item.reason;
   $('#edit-popover').hidden=false;
   document.querySelectorAll('.revision.current').forEach(n=>n.classList.remove('current'));
   document.querySelectorAll('[data-issue-id]').forEach(n=>{if(n.dataset.issueId===id)n.classList.add('current');});
-  positionEditor();$('#replacement').focus({preventScroll:true});
+  sizeEditor();$('#replacement').focus({preventScroll:true});
 }
 async function nextReview(after='') {
   if(!review?.supported)return;
@@ -423,10 +427,10 @@ $('#reviewer').addEventListener('input', () => { if (review?.supported) { review
 $('#review-note').addEventListener('input', () => { if (review?.supported) { review.note = $('#review-note').value; dirtyReview(); } });
 $('#next-review').addEventListener('click', () => {const next=review?.items.find(i=>i.decision==='pending')||review?.items[0];if(next)openReview(next.id);});
 $('#approve-review').addEventListener('click', exportDocument);
-$('#close-edit').addEventListener('click',()=>{$('#edit-popover').hidden=true;});
+document.addEventListener('click',event=>{if(!event.target.closest('#edit-popover,[data-issue-id],#next-review'))$('#edit-popover').hidden=true;});
 $('#replacement').addEventListener('input',()=>{
   const item=review?.items.find(i=>i.id===currentEditId);if(!item||exclusiveWrite)return;
-  item.replacement=$('#replacement').value;item.decision='pending';updateParagraph(item.paragraph_id);dirtyReview();positionEditor();
+  item.replacement=$('#replacement').value;item.decision='pending';updateParagraph(item.paragraph_id);dirtyReview();sizeEditor();
 });
 $('#confirm-edit').addEventListener('click',()=>{
   const item=review?.items.find(i=>i.id===currentEditId);if(!item||exclusiveWrite)return;

@@ -2,6 +2,7 @@ import {readFile, writeFile, mkdir, rename} from 'node:fs/promises';
 import {join, extname, basename} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {annotatedArtifact, paragraphRuns} from './preview.mjs';
+import {recordModification, reviewChanges} from './modification-log.mjs';
 
 const activeWrites = new Set();
 const problem = (message, status = 400) => Object.assign(new Error(message), {status});
@@ -142,7 +143,15 @@ export async function updateApproval(job, directory, request) {
     }
     await mkdir(join(directory, '..', 'private'), {recursive: true});
     await atomicJson(recordPath(directory), next);
-    return view(next, job);
+    const logWarning = await recordModification(join(directory, '..', '..'), job, `review_${request.action}`, {
+      revision: next.revision, previous_revision: loaded.state.revision, status: next.status,
+      reviewer: next.reviewer, note: next.note,
+      ...(next.revision === 1 ? {baseline: loaded.state.items} : {}),
+      changes: reviewChanges(loaded.state, next),
+      ...(request.action === 'approve' ? {export_id: next.export_id, document_name: next.document_name,
+        decisions: next.items.map(({id, decision, replacement, original}) => ({id, decision, final_text: decision === 'reject' ? original : replacement}))} : {})
+    });
+    return {...view(next, job), log_warning: logWarning};
   } finally { activeWrites.delete(directory); }
 }
 export async function approvalFile(job, directory, kind) {
